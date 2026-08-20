@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>졸업 축하 방명록</title>
+
+<!--
+  ============================================================
+  설정하는 곳 (딱 4줄만 바꾸면 됩니다) — 아래 <script id="config"> 안을 보세요.
+  1) FORM_ACTION      : 구글폼 제출 주소 (viewform → formResponse)
+  2) ENTRY_NAME       : "이름" 문항의 entry ID
+  3) ENTRY_MESSAGE    : "메시지" 문항의 entry ID
+  4) SHEET_ID         : 응답이 쌓이는 구글 시트의 ID (주소창 /d/ 와 /edit 사이)
+  ============================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Do+Hyeon&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --pink:#ffd6e8; --pink-deep:#ff8fb3;
+    --lav:#e3d9ff; --lav-deep:#b39cff;
+    --mint:#cdf5e3; --mint-deep:#7fd9ac;
+    --peach:#ffe3c2; --peach-deep:#ffb26b;
+    --ink:#4a4458;
+    --card-bg:#ffffffdd;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    font-family:'Gowun Dodum', sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 15% 20%, var(--pink) 0%, transparent 45%),
+      radial-gradient(circle at 85% 15%, var(--lav) 0%, transparent 45%),
+      radial-gradient(circle at 20% 85%, var(--mint) 0%, transparent 45%),
+      radial-gradient(circle at 90% 90%, var(--peach) 0%, transparent 45%),
+      #fffaf7;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /* 둥둥 떠다니는 배경 이모지 */
+  .floaty{
+    position:fixed; top:-60px; font-size:28px; opacity:.55;
+    animation:fall linear infinite; pointer-events:none; z-index:0;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.08));
+  }
+  @keyframes fall{
+    0%{ transform:translateY(0) rotate(0deg); }
+    100%{ transform:translateY(110vh) rotate(360deg); }
+  }
+
+  .wrap{ position:relative; z-index:1; max-width:640px; margin:0 auto; padding:40px 18px 70px; }
+
+  header{ text-align:center; margin-bottom:28px; }
+  header .cap{ font-size:52px; display:block; margin-bottom:6px; }
+  h1{
+    font-family:'Do Hyeon', sans-serif; font-size:30px; margin:0 0 8px;
+    color:var(--ink); letter-spacing:-0.02em;
+  }
+  h1 .highlight{ color:var(--pink-deep); }
+  .sub{ margin:0; font-size:17px; color:#8b8296; }
+
+  .card{
+    background:var(--card-bg); border-radius:22px; padding:22px 20px;
+    margin-bottom:22px; box-shadow:0 8px 24px rgba(180,150,200,.18);
+    backdrop-filter:blur(2px);
+  }
+  .card h2{
+    font-family:'Do Hyeon', sans-serif; font-size:19px; margin:0 0 14px;
+    display:flex; align-items:center; gap:6px;
+  }
+
+  label{ display:block; font-size:15px; margin:0 0 5px 2px; color:#7a7188; }
+  input[type=text], textarea{
+    width:100%; border:2px solid #f0e3ee; border-radius:14px;
+    padding:11px 14px; font-family:'Gowun Dodum', sans-serif; font-size:16px;
+    background:#fff; color:var(--ink); margin-bottom:14px; resize:none;
+  }
+  input[type=text]:focus, textarea:focus{ outline:none; border-color:var(--pink-deep); }
+  textarea{ min-height:78px; line-height:1.5; }
+  .count{ text-align:right; font-size:12.5px; color:#b6acc2; margin:-10px 2px 14px; }
+
+  /* 봇 방지용 함정 필드 — 사람 눈에는 안 보임 */
+  .trap{ position:absolute; left:-9999px; opacity:0; height:0; }
+
+  button.submit{
+    width:100%; border:none; border-radius:16px; padding:14px;
+    font-family:'Do Hyeon', sans-serif; font-size:18px; color:#fff; cursor:pointer;
+    background:linear-gradient(135deg, var(--pink-deep), var(--lav-deep));
+    box-shadow:0 6px 16px rgba(255,143,179,.4);
+    transition:transform .12s;
+  }
+  button.submit:active{ transform:scale(.97); }
+  button.submit:disabled{ opacity:.6; cursor:default; }
+
+  .status{ text-align:center; font-size:14.5px; margin-top:12px; min-height:20px; }
+  .status.ok{ color:#3fae7a; }
+  .status.err{ color:#e0668a; }
+
+  .entries{ display:grid; gap:14px; }
+  .entry{
+    border-radius:18px; padding:16px 18px; position:relative;
+    box-shadow:0 4px 14px rgba(180,150,200,.14);
+  }
+  .entry:nth-child(4n+1){ background:linear-gradient(135deg,#fff,var(--pink)); }
+  .entry:nth-child(4n+2){ background:linear-gradient(135deg,#fff,var(--lav)); }
+  .entry:nth-child(4n+3){ background:linear-gradient(135deg,#fff,var(--mint)); }
+  .entry:nth-child(4n+4){ background:linear-gradient(135deg,#fff,var(--peach)); }
+  .entry .who{ font-family:'Do Hyeon', sans-serif; font-size:16.5px; margin-bottom:4px; }
+  .entry .msg{ font-size:16px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+  .entry .deco{ position:absolute; top:12px; right:14px; font-size:20px; opacity:.7; }
+
+  .empty{
+    text-align:center; padding:34px 10px; color:#a79cb4; font-size:15.5px;
+    background:var(--card-bg); border-radius:18px;
+  }
+  .loading{ text-align:center; padding:20px; color:#a79cb4; font-size:15px; }
+
+  footer{ text-align:center; margin-top:34px; font-size:13px; color:#c2b8cc; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <span class="cap">🎓</span>
+    <h1><span class="highlight">유화</span>의 졸업을 축하합니다!</h1>
+    <p class="sub">따뜻한 축하 메시지를 남겨주세요 🌸✨</p>
+  </header>
+
+  <div class="card">
+    <h2>💌 메시지 남기기</h2>
+    <form id="gbForm">
+      <label for="gbName">이름</label>
+      <input type="text" id="gbName" maxlength="20" placeholder="예: 김철수" required>
+
+      <label for="gbMsg">축하 메시지</label>
+      <textarea id="gbMsg" maxlength="200" placeholder="졸업을 진심으로 축하해요! 🎉" required></textarea>
+      <div class="count"><span id="gbCount">0</span>/200</div>
+
+      <!-- 봇 방지용 — 사람은 안 채워도 됨 -->
+      <input type="text" class="trap" id="gbTrap" name="gbTrap" tabindex="-1" autocomplete="off">
+
+      <button type="submit" class="submit" id="gbSubmit">축하 메시지 보내기 🎉</button>
+      <p class="status" id="gbStatus"></p>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>📖 남겨진 메시지들</h2>
+    <div id="entries" class="entries">
+      <p class="loading">불러오는 중... 🎈</p>
+    </div>
+  </div>
+
+  <footer>Made with 💗 for graduation</footer>
+</div>
+
+<script id="config">
+  // ── 여기 4개만 담당자님 구글폼/시트 값으로 바꿔주세요 ──────────────
+  var FORM_ACTION   = "https://docs.google.com/forms/d/e/여기에_본인_폼ID/formResponse";
+  var ENTRY_NAME    = "entry.111111111";   // "이름" 문항의 entry ID
+  var ENTRY_MESSAGE = "entry.222222222";   // "메시지" 문항의 entry ID
+  var SHEET_ID      = "여기에_본인_시트ID";  // 시트 URL의 /d/ 와 /edit 사이 값
+  // ────────────────────────────────────────────────────────────
+</script>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var isConfigured = FORM_ACTION.indexOf("여기에") === -1 && SHEET_ID.indexOf("여기에") === -1;
+
+  // ---------- 배경에 둥둥 떠다니는 이모지 ----------
+  var EMOJIS = ["🎓","🌸","✨","🎉","💮","🎈"];
+  for(var i=0;i<14;i++){
+    var f = document.createElement("span");
+    f.className = "floaty";
+    f.textContent = EMOJIS[i % EMOJIS.length];
+    f.style.left = (Math.random()*100) + "vw";
+    f.style.animationDuration = (14 + (i % 6) * 3) + "s";
+    f.style.animationDelay = (i * -2.3) + "s";
+    f.style.fontSize = (20 + (i % 4) * 8) + "px";
+    document.body.appendChild(f);
+  }
+
+  // ---------- 글자수 카운터 ----------
+  $("gbMsg").addEventListener("input", function(){
+    $("gbCount").textContent = this.value.length;
+  });
+
+  // ---------- 데모용 예시 카드 (아직 설정 전일 때) ----------
+  var DEMO = [
+    { who:"미리보기", msg:"구글폼 연결 전이에요. 아래 안내대로 4개 값만 채우면 진짜 메시지가 여기 쌓여요 :)" }
+  ];
+
+  function escapeHtml(s){
+    return String(s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+
+  function renderEntries(list){
+    var wrap = $("entries");
+    if(!list || !list.length){
+      wrap.innerHTML = '<p class="empty">아직 메시지가 없어요. 첫 번째 축하 메시지를 남겨주세요! 🎈</p>';
+      return;
+    }
+    var deco = ["🎀","💐","🌟","🍀","🎊","💝"];
+    var html = "";
+    for(var i=0;i<list.length;i++){
+      var e = list[i];
+      html += '<div class="entry">' +
+                '<span class="deco">' + deco[i % deco.length] + '</span>' +
+                '<div class="who">' + escapeHtml(e.who || "익명") + '</div>' +
+                '<div class="msg">' + escapeHtml(e.msg || "") + '</div>' +
+              '</div>';
+    }
+    wrap.innerHTML = html;
+  }
+
+  // ---------- 구글 시트에서 응답 불러오기 (gviz JSON) ----------
+  function loadEntries(){
+    if(!isConfigured){
+      renderEntries(DEMO);
+      return;
+    }
+    var url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json";
+    fetch(url)
+      .then(function(res){ return res.text(); })
+      .then(function(text){
+        // 구글이 감싸주는 부분 벗겨내기: google.visualization.Query.setResponse({...});
+        var m = text.match(/setResponse\(([\s\S]*)\);?\s*$/);
+        if(!m) throw new Error("파싱 실패");
+        var data = JSON.parse(m[1]);
+        var rows = (data.table && data.table.rows) || [];
+        // 시트의 열 순서: [타임스탬프, 이름, 메시지] 형태를 가정 (구글폼 기본 순서)
+        var list = rows.map(function(r){
+          var c = r.c || [];
+          var name = c[1] && c[1].v;
+          var msg  = c[2] && c[2].v;
+          return { who: name, msg: msg };
+        }).filter(function(e){ return e.msg; }).reverse(); // 최신 메시지가 위로
+        renderEntries(list);
+      })
+      .catch(function(){
+        renderEntries(DEMO);
+      });
+  }
+
+  // ---------- 방명록 제출 (숨겨진 iframe으로 전송, 새로고침 없음) ----------
+  var submitting = false;
+  $("gbForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    if(submitting) return;
+
+    if($("gbTrap").value){ return; } // 봇 방지 함정에 걸리면 조용히 무시
+
+    var name = $("gbName").value.trim();
+    var msg  = $("gbMsg").value.trim();
+    var statusEl = $("gbStatus");
+
+    if(!name || !msg){
+      statusEl.textContent = "이름과 메시지를 모두 입력해주세요!";
+      statusEl.className = "status err";
+      return;
+    }
+
+    if(!isConfigured){
+      statusEl.textContent = "아직 구글폼 연결 전이에요. 안내대로 설정을 먼저 완료해주세요 🙏";
+      statusEl.className = "status err";
+      return;
+    }
+
+    submitting = true;
+    $("gbSubmit").disabled = true;
+    statusEl.textContent = "보내는 중... 🕊️";
+    statusEl.className = "status";
+
+    // 매 제출마다 새 iframe을 만들어 붙였다 뗀다 (한 번 쓰고 버리는 방식 — 가장 안전)
+    var iframe = document.createElement("iframe");
+    var frameName = "gbFrame_" + Date.now();
+    iframe.name = frameName;
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+
+    var form = document.createElement("form");
+    form.action = FORM_ACTION;
+    form.method = "POST";
+    form.target = frameName;
+    form.style.display = "none";
+
+    function addField(fieldName, value){
+      var inp = document.createElement("input");
+      inp.type = "hidden";
+      inp.name = fieldName;
+      inp.value = value;
+      form.appendChild(inp);
+    }
+    addField(ENTRY_NAME, name);
+    addField(ENTRY_MESSAGE, msg);
+
+    document.body.appendChild(form);
+    form.submit();
+
+    setTimeout(function(){
+      statusEl.textContent = "축하 메시지가 등록됐어요! 고마워요 🎉";
+      statusEl.className = "status ok";
+      $("gbName").value = "";
+      $("gbMsg").value = "";
+      $("gbCount").textContent = "0";
+      $("gbSubmit").disabled = false;
+      submitting = false;
+      document.body.removeChild(form);
+      setTimeout(function(){
+        if(iframe.parentNode) document.body.removeChild(iframe);
+      }, 3000);
+      // 구글 시트 반영에 몇 초 걸릴 수 있어 살짝 텀을 두고 새로고침
+      setTimeout(loadEntries, 2500);
+    }, 900);
+  });
+
+  loadEntries();
+})();
+</script>
+
+</body>
+</html>
